@@ -1,25 +1,82 @@
----
 title: "Reproducible Research: Peer Assessment 1"
+author: "Natali Pérez Rivas"
+date: "2025-04-26"
 output: 
   html_document:
     keep_md: true
 ---
 
+```{r load_libraries, echo = TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(lattice)
+```
 
 ## Loading and preprocessing the data
-
+```{r load_data, echo = TRUE}
+knitr::opts_chunk$set(echo = TRUE) 
+data_frame <- read.csv("C:/Users/USUARIO/Documents/repdata_data_activity/Activity.csv")
+data_frame$date <- as.Date(data_frame$date)
+```
 
 
 ## What is mean total number of steps taken per day?
+```{r summary_stats, echo = TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+steps_per_day <- aggregate(steps ~ date, data = data_frame, sum, na.rm = TRUE)
+mean_steps <- mean(steps_per_day$steps, na.rm = TRUE)
+median_steps <- median(steps_per_day$steps, na.rm = TRUE)
 
+cat("Mean total number of steps:", mean_steps, "\n")
+cat("Median total number of steps:", median_steps, "\n")
 
+hist(steps_per_day$steps, 
+     main = "Histogram: Total Steps per Day", 
+     xlab = "Total Steps", 
+     col = "blue", 
+     breaks = 10)
+```
 
 ## What is the average daily activity pattern?
+```{r daily_activity_pattern, echo = TRUE}
+knitr::opts_chunk$set(echo = TRUE) 
+mean_steps_interval <- aggregate(steps ~ interval, data = data_frame, mean, na.rm = TRUE)
 
-
+plot(mean_steps_interval$interval, mean_steps_interval$steps, 
+     type = "l", 
+     main = "Average Daily Activity Pattern", 
+     xlab = "Interval (5 Min)", 
+     ylab = "Average Steps", 
+     col = "red")
+```
 
 ## Imputing missing values
 
+```{r imputation, echo = TRUE}
+knitr::opts_chunk$set(echo = TRUE) 
+missing_values <- sum(is.na(data_frame$steps))
+data_frame_imputed <- merge(data_frame, mean_steps_interval, by = "interval", all.x = TRUE)
+data_frame_imputed$steps <- ifelse(is.na(data_frame_imputed$steps.x), 
+                                   data_frame_imputed$steps.y, 
+                                   data_frame_imputed$steps.x)
+data_frame_imputed <- data_frame_imputed[, c("steps", "date", "interval")]
 
+cat("Missing values after imputation:", sum(is.na(data_frame_imputed$steps)), "\n")
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r weekday_weekend_analysis, echo = TRUE}
+knitr::opts_chunk$set(echo = TRUE) 
+data_frame_imputed$day_type <- ifelse(weekdays(data_frame_imputed$date) %in% c("sábado", "domingo"), 
+                                      "weekend", 
+                                      "weekday")
+
+steps_day_type <- aggregate(steps ~ interval + day_type, data = data_frame_imputed, mean)
+
+xyplot(steps ~ interval | day_type, data = steps_day_type, 
+       type = "l", layout = c(1, 2), 
+       main = "Activity Patterns: Weekdays vs Weekends", 
+       xlab = "Interval (5 Minutes)", 
+       ylab = "Average Steps")
+```
